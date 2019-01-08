@@ -232,7 +232,7 @@ connection.onDidChangeConfiguration((change) => {
 			if (settings.yaml.format.bracketSpacing === false) {
 				yamlFormatterSettings.bracketSpacing = false;
 			}
-		}		
+		}
 	}
 	schemaConfigurationSettings = [];
 
@@ -371,6 +371,9 @@ function configureSchemas(uri, fileMatch, schema, languageSettings){
 	}
 	if(uri.toLowerCase().trim() === "kedge"){
 		uri = KEDGE_SCHEMA_URL;
+	}
+	if(uri.toLowerCase().trim() === "xebialabs"){
+		uri = encodeURI("file://" + __dirname + "/schema.json");
 	}
 
 	if(schema === null){

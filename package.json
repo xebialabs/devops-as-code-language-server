@@ -1,13 +1,12 @@
 {
-  "name": "yaml-language-server",
-  "description": "YAML language server",
+  "name": "devops-as-code-language-server",
+  "description": "Devops As Code language server",
   "version": "0.2.1",
-  "author": "Gorkem Ercan (Red Hat)",
+  "author": "XebiaLabs",
   "license": "MIT",
   "contributors": [
     {
-      "name": "Joshua Pinkney",
-      "email": "joshpinkney@gmail.com"
+      "name": "Paul"
     },
     {
       "name": "Google LLC"
@@ -25,7 +24,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/redhat-developer/yaml-language-server.git"
+    "url": "https://github.com/xebialabs/devops-as-code-language-server"
   },
   "dependencies": {
     "js-yaml": "^3.12.0",
@@ -52,7 +51,7 @@
     "typescript": "^2.7.2"
   },
   "scripts": {
-    "compile": "installServerIntoExtension ./out ./package.json ./tsconfig.json && tsc -p .",
+    "compile": "cp src/schema.json out/server/src && installServerIntoExtension ./out ./package.json ./tsconfig.json && tsc -p .",
     "watch": "installServerIntoExtension ./out ./package.json ./tsconfig.json && tsc --watch -p .",
     "test": "mocha --require ts-node/register --ui tdd ./test/*.test.ts",
     "coverage": "nyc mocha --require ts-node/register --require source-map-support/register --recursive --ui tdd ./test/*.test.ts",
