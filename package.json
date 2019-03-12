@@ -1,7 +1,7 @@
 {
   "name": "devops-as-code-language-server",
   "description": "Devops As Code language server",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "author": "XebiaLabs",
   "license": "MIT",
   "contributors": [
