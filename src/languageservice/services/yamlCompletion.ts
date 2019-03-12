@@ -16,7 +16,7 @@ import { PromiseConstructor, Thenable } from 'vscode-json-languageservice';
 import { CompletionItem, CompletionItemKind, CompletionList, TextDocument, Position, Range, TextEdit, InsertTextFormat } from 'vscode-languageserver-types';
 
 import * as nls from 'vscode-nls';
-import { matchOffsetToDocument } from '../utils/arrUtils';
+import { matchOffsetToDocument, filterInvalidCustomTags } from '../utils/arrUtils';
 import { LanguageSettings } from '../yamlLanguageService';
 const localize = nls.loadMessageBundle();
 
@@ -107,7 +107,7 @@ export class YAMLCompletion {
 				let existing = proposed[suggestion.label];
 				if (!existing) {
 					proposed[suggestion.label] = suggestion;
-					if (overwriteRange) {
+					if (overwriteRange && overwriteRange.start.line === overwriteRange.end.line) {
 						suggestion.textEdit = TextEdit.replace(overwriteRange, suggestion.insertText);
 					}
 					result.items.push(suggestion);
@@ -354,11 +354,11 @@ export class YAMLCompletion {
 	}
 
 	private getCustomTagValueCompletions(collector: CompletionsCollector) {
-		this.customTags.forEach((customTagItem) => {
-			let tagItemSplit = customTagItem.split(" ");
-			if(tagItemSplit && tagItemSplit[0]){
-				this.addCustomTagValueCompletion(collector, " ", tagItemSplit[0]);
-			}
+		const validCustomTags = filterInvalidCustomTags(this.customTags);
+		validCustomTags.forEach((validTag) => {
+			// Valid custom tags are guarenteed to be strings
+			const label = validTag.split(' ')[0];
+			this.addCustomTagValueCompletion(collector, " ", label);
 		});
 	}
 

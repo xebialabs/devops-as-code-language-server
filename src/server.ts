@@ -87,23 +87,14 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 	workspaceFolders = params["workspaceFolders"];
 	workspaceRoot = URI.parse(params.rootPath);
 
-	function hasClientCapability(...keys: string[]) {
-		let c = params.capabilities;
-		for (let i = 0; c && i < keys.length; i++) {
-			c = c[keys[i]];
-		}
-		return !!c;
-	}
-
 	hasWorkspaceFolderCapability = capabilities.workspace && !!capabilities.workspace.workspaceFolders;
-	clientDynamicRegisterSupport = hasClientCapability('textDocument', 'formatting', 'dynamicRegistration');
 	return {
 		capabilities: {
 			textDocumentSync: documents.syncKind,
-			completionProvider: { resolveProvider: true },
+			completionProvider: { triggerCharacters: [' '], resolveProvider: true },
 			hoverProvider: true,
 			documentSymbolProvider: true,
-			documentFormattingProvider: false
+			documentFormattingProvider: true
 		}
 	};
 });
@@ -176,14 +167,15 @@ export let customLanguageService = getCustomLanguageService(schemaRequestService
 // The settings interface describes the server relevant settings part
 interface Settings {
 	yaml: {
-		format: CustomFormatterOptions & {
-			enable: boolean;
-		};
+		format: CustomFormatterOptions;
 		schemas: JSONSchemaSettings[];
 		validate: boolean;
 		hover: boolean;
 		completion: boolean;
 		customTags: Array<String>;
+		schemaStore: {
+			enable: boolean
+		}
 	};
 	http: {
 		proxy: string;
@@ -206,12 +198,14 @@ let yamlShouldValidate = true;
 let yamlFormatterSettings = {
 	singleQuote: false,
 	bracketSpacing: true,
-	proseWrap: "preserve"
+	proseWrap: "preserve",
+	printWidth: 80
 } as CustomFormatterOptions;
 let yamlShouldHover = true;
 let yamlShouldCompletion = true;
 let schemaStoreSettings = [];
 let customTags = [];
+let schemaStoreEnabled = true;
 
 connection.onDidChangeConfiguration((change) => {
 	var settings = <Settings>change.settings;
@@ -224,10 +218,14 @@ connection.onDidChangeConfiguration((change) => {
 		yamlShouldHover = settings.yaml.hover;
 		yamlShouldCompletion = settings.yaml.completion;
 		customTags = settings.yaml.customTags ? settings.yaml.customTags : [];
+		if (settings.yaml.schemaStore) {
+			schemaStoreEnabled = settings.yaml.schemaStore.enable;
+		}
 		if (settings.yaml.format) {
 			yamlFormatterSettings = {
 				singleQuote: settings.yaml.format.singleQuote || false,
-				proseWrap: settings.yaml.format.proseWrap || "preserve"
+				proseWrap: settings.yaml.format.proseWrap || "preserve",
+				printWidth: settings.yaml.format.printWidth || 80
 			};
 			if (settings.yaml.format.bracketSpacing === false) {
 				yamlFormatterSettings.bracketSpacing = false;
@@ -248,27 +246,23 @@ connection.onDidChangeConfiguration((change) => {
 	setSchemaStoreSettingsIfNotSet();
 
 	updateConfiguration();
-
-	// dynamically enable & disable the formatter
-	if (clientDynamicRegisterSupport) {
-		let enableFormatter = settings && settings.yaml && settings.yaml.format && settings.yaml.format.enable;
-		if (enableFormatter) {
-			if (!formatterRegistration) {
-				formatterRegistration = connection.client.register(DocumentFormattingRequest.type, { documentSelector: [{ language: 'yaml' }] });
-			}
-		} else if (formatterRegistration) {
-			formatterRegistration.then(r => r.dispose());
-			formatterRegistration = null;
-		}
-	}
 });
 
-function setSchemaStoreSettingsIfNotSet(){
-	if(schemaStoreSettings.length === 0){
+/**
+ * This function helps set the schema store if it hasn't already been set
+ * 	AND the schema store setting is enabled. If the schema store setting
+ * 	is not enabled we need to clear the schemas.
+ */
+function setSchemaStoreSettingsIfNotSet() {
+	const schemaStoreIsSet = (schemaStoreSettings.length !== 0);
+	if (schemaStoreEnabled && !schemaStoreIsSet) {
 		getSchemaStoreMatchingSchemas().then(schemaStore => {
 			schemaStoreSettings = schemaStore.schemas;
 			updateConfiguration();
 		});
+	} else if (!schemaStoreEnabled) {
+		schemaStoreSettings = [];
+		updateConfiguration();
 	}
 }
 
@@ -590,7 +584,12 @@ connection.onDocumentFormatting(formatParams => {
 		return;
 	}
 
-	return customLanguageService.doFormat(document, yamlFormatterSettings);
+	const customFormatterSettings = {
+		tabWidth: formatParams.options.tabSize,
+		...yamlFormatterSettings
+	}
+
+	return customLanguageService.doFormat(document, customFormatterSettings);
 });
 
 connection.listen();
